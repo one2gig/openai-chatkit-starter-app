@@ -2,7 +2,13 @@
   "buildCommand": "cd managed-chatkit/frontend && npm install && npm run build",
   "outputDirectory": "managed-chatkit/frontend/dist",
   "framework": null,
+  "functions": {
+    "api/*.py": {
+      "runtime": "python3.9"
+    }
+  },
   "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
