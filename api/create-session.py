@@ -15,7 +15,12 @@ class handler(BaseHTTPRequestHandler):
         # Get API key from environment
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            self.send_error_response(500, "Missing OPENAI_API_KEY")
+            self.send_error_response(500, "Missing OPENAI_API_KEY environment variable. Please add it in Vercel project settings.")
+            return
+        
+        # Validate API key format
+        if not (api_key.startswith('sk-') or api_key.startswith('sk-proj-')):
+            self.send_error_response(500, f"Invalid OPENAI_API_KEY format. Key should start with 'sk-' or 'sk-proj-' but got: {api_key[:10]}...")
             return
         
         # Parse request body
@@ -33,7 +38,12 @@ class handler(BaseHTTPRequestHandler):
         workflow_id = workflow_id or body.get('workflowId') or os.getenv('VITE_CHATKIT_WORKFLOW_ID')
         
         if not workflow_id:
-            self.send_error_response(400, "Missing workflow id")
+            self.send_error_response(400, "Missing workflow id. Add VITE_CHATKIT_WORKFLOW_ID to Vercel environment variables.")
+            return
+        
+        # Validate workflow ID format
+        if not workflow_id.startswith('wf_'):
+            self.send_error_response(400, f"Invalid workflow ID format. Should start with 'wf_' but got: {workflow_id[:10]}...")
             return
         
         # Get or create user ID from cookie
@@ -87,11 +97,15 @@ class handler(BaseHTTPRequestHandler):
         except HTTPError as e:
             try:
                 error_body = json.loads(e.read())
-                error_msg = error_body.get('error', str(e))
+                error_msg = error_body.get('error', {})
+                if isinstance(error_msg, dict):
+                    error_msg = error_msg.get('message', str(error_msg))
+                # Add more context for debugging
+                full_error = f"OpenAI API Error: {error_msg} (Status: {e.code})"
             except:
-                error_msg = str(e)
+                full_error = f"OpenAI API Error: {str(e)} (Status: {e.code})"
             
-            self.send_error_response(e.code, error_msg)
+            self.send_error_response(e.code, full_error)
             
         except Exception as e:
             self.send_error_response(502, f"Failed to reach ChatKit API: {str(e)}")
